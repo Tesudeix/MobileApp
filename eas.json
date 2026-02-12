@@ -6,12 +6,22 @@
   "build": {
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_USE_LOCAL_API": "false",
+        "EXPO_PUBLIC_API_URL": "http://tesudeix.com/api",
+        "EXPO_PUBLIC_API_FALLBACK_URLS": "http://152.42.205.184/api"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_USE_LOCAL_API": "false",
+        "EXPO_PUBLIC_API_URL": "http://tesudeix.com/api",
+        "EXPO_PUBLIC_API_FALLBACK_URLS": "http://152.42.205.184/api"
+      }
     }
   },
   "submit": {
