@@ -115,7 +115,7 @@ const formatDate = (value?: string | null) => {
 
 const productImageUrl = (image?: string | null) => {
   if (!image) return null;
-  const host = API_URL.replace(/\/api-proxy$/, "");
+  const host = API_URL.replace(/\/api(?:-proxy)?$/, "");
   return `${host}/files/${encodeURIComponent(image)}`;
 };
 
@@ -173,6 +173,12 @@ export default function App() {
     () => cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
     [cartItems]
   );
+  const orderPreviewTotal = useMemo(() => {
+    if (!activeProduct) return 0;
+    const quantityNum = Number(orderQuantity || "1");
+    const quantity = Number.isFinite(quantityNum) ? Math.max(1, Math.floor(quantityNum)) : 1;
+    return activeProduct.price * quantity;
+  }, [activeProduct, orderQuantity]);
 
   const selectedCategory =
     homeCategories.find((item) => item.key === selectedCategoryKey) ||
@@ -334,7 +340,11 @@ export default function App() {
           : await register(normalizedPhone, trimmedPassword, name.trim() || undefined);
 
       if (!result.ok) {
-        setStatus(result.error);
+        if (result.status === 0) {
+          setStatus(`Network error. Check API host reachability. ${result.error}`);
+        } else {
+          setStatus(result.error);
+        }
         return;
       }
 
@@ -501,6 +511,12 @@ export default function App() {
 
             <View style={styles.row}>
               <Pressable
+                onPress={() => void openProductDetail(item.product)}
+                style={styles.detailSmallButton}
+              >
+                <Text style={styles.detailSmallButtonText}>Дэлгэрэнгүй</Text>
+              </Pressable>
+              <Pressable
                 onPress={() => updateCartQuantity(item.product._id, -1)}
                 style={styles.quantityButton}
               >
@@ -566,7 +582,9 @@ export default function App() {
       <View style={styles.modalBackdrop}>
         <View style={styles.modalSheet}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Product Detail</Text>
+            <Text style={styles.modalTitle}>
+              {activeProduct ? activeProduct.name : "Product Detail"}
+            </Text>
             <Pressable
               onPress={() => setDetailVisible(false)}
               style={styles.modalCloseButton}
@@ -636,6 +654,7 @@ export default function App() {
                     value={orderQuantity}
                     onChangeText={(value) => setOrderQuantity(value.replace(/[^\d]/g, ""))}
                   />
+                  <Text style={styles.meta}>Нийт дүн: {formatPriceMnt(orderPreviewTotal)} MNT</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="Тайлбар (сонголтоор)"
@@ -1171,6 +1190,19 @@ const styles = StyleSheet.create({
   },
   detailButtonText: {
     color: "#d7ddff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  detailSmallButton: {
+    borderRadius: 10,
+    backgroundColor: "#162248",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailSmallButtonText: {
+    color: "#c8d6ff",
     fontSize: 12,
     fontWeight: "700",
   },

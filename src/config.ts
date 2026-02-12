@@ -1,7 +1,8 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-const REMOTE_API_URL = "http://159.65.8.220/api-proxy";
+const DEFAULT_REMOTE_API_URL = "http://tesudeix.com/api";
+const DEFAULT_REMOTE_API_FALLBACK = "http://152.42.205.184/api";
 const LOCAL_FALLBACK_API_URL = "http://127.0.0.1:4000";
 
 const getDevHost = (): string | null => {
@@ -18,9 +19,10 @@ const getDevHost = (): string | null => {
 };
 
 const getDefaultApiUrl = () => {
-  // Use local backend by default. Set EXPO_PUBLIC_USE_LOCAL_API=false to force remote.
-  if (process.env.EXPO_PUBLIC_USE_LOCAL_API === "false") {
-    return REMOTE_API_URL;
+  // Production-safe default: remote API.
+  // Set EXPO_PUBLIC_USE_LOCAL_API=true only when explicitly testing local backend.
+  if (process.env.EXPO_PUBLIC_USE_LOCAL_API !== "true") {
+    return DEFAULT_REMOTE_API_URL;
   }
 
   const devHost = getDevHost();
@@ -35,8 +37,31 @@ const getDefaultApiUrl = () => {
   return LOCAL_FALLBACK_API_URL;
 };
 
+const hasScheme = (value: string) => /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(value);
+
+const normaliseUrl = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const withScheme = trimmed.startsWith("//")
+    ? `http:${trimmed}`
+    : hasScheme(trimmed)
+      ? trimmed
+      : `http://${trimmed.replace(/^\/+/, "")}`;
+
+  return withScheme.replace(/\/+$/, "");
+};
+
 export const API_URL =
-  (process.env.EXPO_PUBLIC_API_URL?.trim() || getDefaultApiUrl()).replace(
-    /\/$/,
-    ""
-  );
+  normaliseUrl(process.env.EXPO_PUBLIC_API_URL?.trim() || getDefaultApiUrl());
+
+const envFallbacks = (process.env.EXPO_PUBLIC_API_FALLBACK_URLS || "")
+  .split(",")
+  .map((item) => normaliseUrl(item))
+  .filter(Boolean);
+
+export const API_FALLBACK_URLS = [
+  ...envFallbacks,
+  DEFAULT_REMOTE_API_FALLBACK,
+  DEFAULT_REMOTE_API_URL,
+].filter((item, index, arr) => Boolean(item) && item !== API_URL && arr.indexOf(item) === index);

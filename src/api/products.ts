@@ -14,6 +14,8 @@ export type Product = {
   updatedAt?: string | null;
 };
 
+const normaliseCategory = (value: string): string => value.normalize("NFC").trim();
+
 const isCategory = (value: unknown): value is ProductCategory => {
   return typeof value === "string" && PRODUCT_CATEGORIES.includes(value as ProductCategory);
 };
@@ -44,11 +46,23 @@ const toProduct = (value: unknown): Product | null => {
   };
 };
 
+const getProductsArray = (payload: unknown): unknown[] => {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== "object") return [];
+
+  const row = payload as Record<string, unknown>;
+  if (Array.isArray(row.products)) return row.products;
+  if (Array.isArray(row.items)) return row.items;
+  if (Array.isArray(row.data)) return row.data;
+
+  return [];
+};
+
 export const listProducts = async (
   category?: ProductCategory
 ): Promise<ApiResult<Product[]>> => {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  const response = await request<unknown[]>(`/api/products${query}`, {
+  // Fetch full list and filter client-side to avoid backend query-shape mismatch.
+  const response = await request<unknown>("/api/products", {
     method: "GET",
   });
 
@@ -56,15 +70,25 @@ export const listProducts = async (
     return response;
   }
 
-  if (!Array.isArray(response.data)) {
+  const rows = getProductsArray(response.data);
+  if (!Array.isArray(rows)) {
     return { ok: false, error: "Invalid products response", status: 500 };
   }
 
-  const items = response.data
+  const items = rows
     .map((entry) => toProduct(entry))
     .filter((entry): entry is Product => entry !== null);
 
-  return { ok: true, data: items };
+  if (!category) {
+    return { ok: true, data: items };
+  }
+
+  const targetCategory = normaliseCategory(category);
+  const filtered = items.filter(
+    (item) => normaliseCategory(item.category) === targetCategory
+  );
+
+  return { ok: true, data: filtered };
 };
 
 export const getProductById = async (
