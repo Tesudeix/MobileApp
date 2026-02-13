@@ -37,6 +37,22 @@ const isValidHttpUrl = (value: string) => {
   }
 };
 
+const isIpLiteralHost = (value: string) => {
+  try {
+    const { hostname } = new URL(value);
+    // IPv4 (e.g. 152.42.205.184) or bracketed IPv6 literal.
+    return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) || hostname.includes(":");
+  } catch {
+    return false;
+  }
+};
+
+const normaliseCandidateBases = (bases: string[]) => {
+  const unique = bases.filter((item, index, arr) => arr.indexOf(item) === index);
+  // Prefer DNS hostnames over literal IPs for better compatibility on carrier networks.
+  return unique.sort((a, b) => Number(isIpLiteralHost(a)) - Number(isIpLiteralHost(b)));
+};
+
 const fetchWithTimeout = async (url: string, init: RequestInit) => {
   if (typeof AbortController === "undefined") {
     return fetch(url, init);
@@ -85,7 +101,7 @@ export const request = async <T>(
 ): Promise<ApiResult<T>> => {
   const { method = "GET", body, token } = options;
   const hasBody = body !== undefined;
-  const candidateBases = [API_URL, ...API_FALLBACK_URLS];
+  const candidateBases = normaliseCandidateBases([API_URL, ...API_FALLBACK_URLS]);
   const maxAttempts = 3;
   let lastError: ApiResult<T> = { ok: false, error: "Request failed", status: 0 };
 

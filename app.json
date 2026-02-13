@@ -12,9 +12,18 @@
       "package": "com.tesudeix.yukimobile",
       "permissions": [
         "INTERNET"
-      ],
-      "usesCleartextTraffic": true
+      ]
     },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "da202200-8d22-4316-bc6f-1153aca3adc2"
